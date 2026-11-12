@@ -36,8 +36,11 @@ SERVED_STATUSES = frozenset({"published", "deprecated"})
 UNSERVED_DIRS = frozenset({"__pycache__", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache"})
 RELEASE_TAG = re.compile(r"^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$")
 FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n", re.S)
-# A slash-name in Markdown (`/name`, a heading `# /name`): it must be a skill of this pack.
-SLASH_NAME = re.compile(r"(?:(?:^|[\s(])`|^(?:#+[ \t]+)?)/([a-z][a-z0-9-]*)(?=[`\s]|$)", re.MULTILINE)
+# Skill references (standard §2): `/name` as its own code span, optionally with arguments, or a line that starts
+# with /name (after any indentation) inside a fenced code block. Each must name a skill of this pack.
+REF_IN_SPAN = re.compile(r"(?<!`)`/([a-z][a-z0-9-]*)(?:[ \t][^`\n]*)?`(?!`)")
+REF_IN_FENCE = re.compile(r"^[ \t]*/([a-z][a-z0-9-]*)(?=[ \t]|$)")
+FENCE = re.compile(r"^[ \t]*(```|~~~)")
 MD_LINK = re.compile(r"\]\(([^)#\s]+\.md)(?:#[^)]*)?\)")
 COMPARATOR = re.compile(r"^(\^|~|>=|<=|>|<|=)?(\d+\.\d+\.\d+)$")
 # Manifest fields an agent is shown; checked for forbidden names like the files themselves.
@@ -63,6 +66,22 @@ def schema(name: str) -> dict[str, Any]:
 def is_hidden(rel: Path) -> bool:
     """Not part of what an agent is served: dotfiles and anything under a dot or cache directory."""
     return rel.name.startswith(".") or any(p in UNSERVED_DIRS or p.startswith(".") for p in rel.parts[:-1])
+
+
+def skill_references(text: str) -> set[str]:
+    """The skill names a Markdown text references, as standard §2 defines a reference."""
+    names: set[str] = set()
+    fence: str | None = None
+    for line in text.splitlines():
+        if m := FENCE.match(line):
+            fence = None if fence == m.group(1) else fence or m.group(1)
+            continue
+        if fence:
+            if ref := REF_IN_FENCE.match(line):
+                names.add(ref.group(1))
+        else:
+            names.update(REF_IN_SPAN.findall(line))
+    return names
 
 
 def frontmatter(text: str) -> dict[str, Any]:
@@ -261,10 +280,9 @@ def dependency_errors(pack: Pack) -> list[str]:
     return errors
 
 
-def reference_errors(pack: Pack, allow_slash: Iterable[str] = ()) -> list[str]:
-    """Slash-names that are not skills of this pack, and Markdown links that leave their artifact."""
+def reference_errors(pack: Pack) -> list[str]:
+    """Skill references that are not skills of this pack, and Markdown links that leave their artifact."""
     skills = {p.parent.name for p, d in pack.manifests.items() if d.get("kind") == "skill"}
-    allowed = skills | set(allow_slash)
     errors: list[str] = []
     for path in pack.manifests:
         artifact = path.parent
@@ -272,7 +290,7 @@ def reference_errors(pack: Pack, allow_slash: Iterable[str] = ()) -> list[str]:
             if is_hidden(md.relative_to(artifact)):
                 continue
             rel, text = pack.rel(md), md.read_text(encoding="utf-8")
-            for name in sorted(set(SLASH_NAME.findall(text)) - allowed):
+            for name in sorted(skill_references(text) - skills):
                 errors.append(f"{rel}: /{name} is not a skill in this pack")
             for link in sorted(set(MD_LINK.findall(text))):
                 target = (md.parent / link).resolve()
@@ -368,7 +386,6 @@ def check(
     root: Path,
     tag: str | None = None,
     forbidden_names: Iterable[str] = (),
-    allow_slash: Iterable[str] = (),
 ) -> tuple[int, list[str]]:
     """Every rule on the pack at ``root``: the number of artifacts and the messages, pack rules first."""
     pack = Pack.load(root)
@@ -376,7 +393,7 @@ def check(
     errors += manifest_errors(pack)
     errors += layout_errors(pack)
     errors += dependency_errors(pack)
-    errors += reference_errors(pack, allow_slash)
+    errors += reference_errors(pack)
     errors += budget_errors(pack)
     errors += forbidden_name_errors(pack, forbidden_names)
     errors += frontmatter_errors(pack)

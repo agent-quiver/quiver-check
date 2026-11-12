@@ -20,20 +20,13 @@ def main(argv: list[str] | None = None) -> int:
         metavar="FILE",
         help="a file of names the pack must not carry, one per line (# starts a comment)",
     )
-    p.add_argument(
-        "--allow-slash",
-        action="append",
-        default=[],
-        metavar="NAME",
-        help="a /name that is not a skill of this pack but may be written, e.g. healthz (repeatable)",
-    )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     a = p.parse_args(argv)
     root = a.path.resolve()
     if not root.is_dir():
         p.error(f"{a.path} is not a directory")
     names = read_names(a.forbid_names) if a.forbid_names else []
-    count, errors = check(root, a.tag or None, names, a.allow_slash)
+    count, errors = check(root, a.tag or None, names)
     for message in errors:
         print(message)
     print(f"{count} artifact(s), {len(errors)} error(s)")

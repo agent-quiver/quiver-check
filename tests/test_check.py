@@ -232,11 +232,31 @@ def test_references_must_resolve(pack: Path, body: str, error: str) -> None:
     assert any(e.startswith(error) for e in errors(pack)), errors(pack)
 
 
-def test_a_slash_name_of_this_pack_or_allowed_passes(pack: Path) -> None:
+@pytest.mark.parametrize(
+    ("body", "unresolved"),
+    [
+        ("Run `/beta` next.\n", None),
+        ("Then `/beta --fast` on the result.\n", None),
+        ("Health is on `GET /healthz`.\n", None),  # a URL path with its method is no reference
+        ("Run `./scripts/check.py` or `/etc/hosts`.\n", None),  # file paths are no references
+        ("# /beta — a heading is prose, not a reference\n", None),
+        ("Health is on `/healthz`.\n", "healthz"),
+        ("Record it with `/gamma new`.\n", "gamma"),
+        ("```text\n/beta  ->  plan\n  /gamma ->  map\n```\n", "gamma"),  # a line start, after indentation
+        ("```\nrun /gamma here\n```\n", None),  # not at the start of the line
+        ("~~~\n/beta\n~~~\nOutside: /gamma in prose.\n", None),
+        ("```\n/beta\n```\nAfter the block, `/gamma`.\n", "gamma"),  # the fence closes
+    ],
+)
+def test_skill_references_follow_the_standard(pack: Path, body: str, unresolved: str | None) -> None:
     add_skill(pack, "beta")
-    add_skill(pack, "alpha", "Run `/beta`, then check `/healthz`.\n")
-    assert errors(pack) == ["skills/alpha/SKILL.md: /healthz is not a skill in this pack"]
-    assert errors(pack, allow_slash=["healthz"]) == []
+    add_skill(pack, "alpha", body)
+    want = [] if unresolved is None else [f"skills/alpha/SKILL.md: /{unresolved} is not a skill in this pack"]
+    assert errors(pack) == want
+
+
+def test_a_reference_with_arguments_resolves_its_skill() -> None:
+    assert qc.skill_references("Record it with `/adr new`, then `/prd`.") == {"adr", "prd"}
 
 
 def test_a_main_document_over_budget_fails(pack: Path) -> None:

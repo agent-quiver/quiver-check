@@ -11,8 +11,8 @@ pack's CI runs on every change, and Quiver runs again before it serves a release
   (`skills/`, `resources/`, `workflows/`, `tools/`, `agent_profiles/`), named after its id with dots as hyphens.
 - A skill's `SKILL.md`: `name` equals the directory, a `description` is present.
 - Dependencies between artifacts: each exists, is served, is in range, needs nothing undeclared; no cycles.
-- References: every `/name` written in Markdown is a skill of this pack, every Markdown link stays inside its
-  artifact.
+- References: every skill reference (`` `/name` `` as its own code span, or a line starting with `/name` in a
+  fenced block; standard §2) names a skill of this pack, and every Markdown link stays inside its artifact.
 - Budgets: a card within 40 tokens, a main document within 2,000 (a token is four characters).
 - Valid frontmatter in every Markdown file.
 - With a release tag: the tag is `vX.Y.Z`, equals `version`, and its CHANGELOG entry is dated.
@@ -27,8 +27,7 @@ pack's CI runs on every change, and Quiver runs again before it serves a release
 uvx --from git+https://github.com/agent-quiver/quiver-check@<commit> quiver-check path/to/pack --tag v1.0.0
 ```
 
-Options: `--tag vX.Y.Z`, `--forbid-names FILE` (one name per line), `--allow-slash NAME` (a `/name` that is not
-a skill, repeatable). Exit status 1 when anything fails.
+Options: `--tag vX.Y.Z`, `--forbid-names FILE` (one name per line). Exit status 1 when anything fails.
 
 **GitHub Action:**
 
@@ -41,7 +40,6 @@ a skill, repeatable). Exit status 1 when anything fails.
     path: .            # the pack's root
     # tag: v1.0.0      # default: the pushed tag on refs/tags/v*
     # forbid-names: .quiver/forbidden-names.txt
-    # allow-slash: healthz
     # secret-scan: "true"
 ```
 

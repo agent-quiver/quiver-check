@@ -15,9 +15,6 @@ inputs:
   forbid-names:
     description: A file of names the pack must not carry, one per line.
     default: ""
-  allow-slash:
-    description: Space-separated /names that are not skills of the pack but may be written (for example healthz).
-    default: ""
   secret-scan:
     description: Scan the pack's git history with gitleaks (needs actions/checkout with fetch-depth 0).
     default: "true"
@@ -34,14 +31,12 @@ runs:
         INPUT_PATH: ${{ inputs.path }}
         INPUT_TAG: ${{ inputs.tag }}
         INPUT_FORBID_NAMES: ${{ inputs.forbid-names }}
-        INPUT_ALLOW_SLASH: ${{ inputs.allow-slash }}
       run: |
         tag=$INPUT_TAG
         if [ -z "$tag" ] && [[ $GITHUB_REF == refs/tags/v* ]]; then tag=${GITHUB_REF#refs/tags/}; fi
         args=("$INPUT_PATH")
         if [ -n "$tag" ]; then args+=(--tag "$tag"); fi
         if [ -n "$INPUT_FORBID_NAMES" ]; then args+=(--forbid-names "$INPUT_FORBID_NAMES"); fi
-        for name in $INPUT_ALLOW_SLASH; do args+=(--allow-slash "$name"); done
         uv run --project "$GITHUB_ACTION_PATH" --frozen --no-dev quiver-check "${args[@]}"
     - name: Scan the history for secrets
       if: inputs.secret-scan == 'true'
