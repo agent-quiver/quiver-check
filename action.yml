@@ -1,0 +1,60 @@
+name: Quiver pack check
+description: Check a Quiver pack against the pack standard, and scan its git history for secrets.
+author: Agent Quiver
+branding:
+  icon: check-circle
+  color: purple
+inputs:
+  path:
+    description: The pack's root, relative to the workspace.
+    default: "."
+  tag:
+    description: >-
+      The release tag being checked. Empty: the pushed tag when the workflow runs on refs/tags/v*, otherwise none.
+    default: ""
+  forbid-names:
+    description: A file of names the pack must not carry, one per line.
+    default: ""
+  allow-slash:
+    description: Space-separated /names that are not skills of the pack but may be written (for example healthz).
+    default: ""
+  secret-scan:
+    description: Scan the pack's git history with gitleaks (needs actions/checkout with fetch-depth 0).
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      with:
+        python-version: "3.12"
+        enable-cache: false
+    - name: Check the pack
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_FORBID_NAMES: ${{ inputs.forbid-names }}
+        INPUT_ALLOW_SLASH: ${{ inputs.allow-slash }}
+      run: |
+        tag=$INPUT_TAG
+        if [ -z "$tag" ] && [[ $GITHUB_REF == refs/tags/v* ]]; then tag=${GITHUB_REF#refs/tags/}; fi
+        args=("$INPUT_PATH")
+        if [ -n "$tag" ]; then args+=(--tag "$tag"); fi
+        if [ -n "$INPUT_FORBID_NAMES" ]; then args+=(--forbid-names "$INPUT_FORBID_NAMES"); fi
+        for name in $INPUT_ALLOW_SLASH; do args+=(--allow-slash "$name"); done
+        uv run --project "$GITHUB_ACTION_PATH" --frozen --no-dev quiver-check "${args[@]}"
+    - name: Scan the history for secrets
+      if: inputs.secret-scan == 'true'
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        GITLEAKS_VERSION: 8.30.1
+        GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+      run: |
+        tarball=gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz
+        curl -sSfL -o "$RUNNER_TEMP/$tarball" \
+          "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$tarball"
+        echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$tarball" | sha256sum -c -
+        tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP" gitleaks
+        repo=$(git -C "$INPUT_PATH" rev-parse --show-toplevel)
+        "$RUNNER_TEMP/gitleaks" git "$repo" --redact --no-banner -v

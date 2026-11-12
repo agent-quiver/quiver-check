@@ -1,0 +1,44 @@
+# Quiver pack check for GitLab CI, included from this public repository at a fixed commit or tag:
+#
+#   include:
+#     - remote: https://raw.githubusercontent.com/agent-quiver/quiver-check/<commit or tag>/gitlab/quiver-check.yml
+#       inputs:
+#         ref: <the same commit or tag>
+#
+# `ref` must repeat the include's commit or tag: the job installs quiver-check from exactly that version.
+# Works once the repository is public.
+spec:
+  inputs:
+    ref:
+      description: The quiver-check commit or tag this file is included at.
+    stage:
+      default: test
+    path:
+      default: "."
+      description: The pack's root, relative to the repository.
+---
+quiver-check:
+  stage: $[[ inputs.stage ]]
+  image: ghcr.io/astral-sh/uv:0.10.4-python3.12-bookworm-slim
+  interruptible: true
+  retry:
+    max: 2
+    when: [runner_system_failure, stuck_or_timeout_failure, scheduler_failure]
+  variables:
+    QUIVER_CHECK_REF: $[[ inputs.ref ]]
+    PACK_PATH: $[[ inputs.path ]]
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends git >/dev/null
+  script:
+    - uvx --from "git+https://github.com/agent-quiver/quiver-check@${QUIVER_CHECK_REF}" quiver-check "$PACK_PATH" --tag "${CI_COMMIT_TAG:-}"
+
+quiver-check-secrets:
+  stage: $[[ inputs.stage ]]
+  image:
+    name: zricethezav/gitleaks:v8.30.1
+    entrypoint: [""]
+  interruptible: true
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - gitleaks git --redact --no-banner -v .

@@ -1,0 +1,10 @@
+id: agent-quiver/fixture-pack
+version: 0.1.0
+title: Fixture pack
+card: "A one-skill pack that quiver-check's own CI runs the action on."
+description: The smallest valid pack; the action's self-test in quiver-check's CI.
+maintainers:
+  - agent-quiver
+license: CC-BY-4.0
+compatibility:
+  quiver: ">=1.0.0 <2.0.0"

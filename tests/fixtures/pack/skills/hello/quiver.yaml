@@ -1,0 +1,13 @@
+id: hello
+kind: skill
+version: 0.1.0
+title: Hello
+description: Greet the user and say which pack this skill came from. Replace this skill with your own.
+card: "Checking that a pack is connected: greet and name the pack."
+owner: your-name
+lifecycle:
+  status: published
+audience:
+- public
+execution:
+  mode: content

@@ -1,0 +1,46 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+  action:
+    # The action itself, from this commit, on the fixture pack; and once more where it must fail.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: ./
+        with:
+          path: tests/fixtures/pack
+          tag: v0.1.0
+          secret-scan: "false"
+      - name: The same with the secret scan of this repository's history
+        uses: ./
+        with:
+          path: tests/fixtures/pack
+      - id: wrong-tag
+        uses: ./
+        continue-on-error: true
+        with:
+          path: tests/fixtures/pack
+          tag: v9.9.9
+          secret-scan: "false"
+      - name: A wrong tag must fail the action
+        if: steps.wrong-tag.outcome != 'failure'
+        run: exit 1

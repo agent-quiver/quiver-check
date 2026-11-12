@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-quiver.github.io/schemas/v1/pack.schema.json",
+  "title": "Quiver pack manifest (quiver-pack.yaml)",
+  "description": "The Quiver pack standard: one forge repository is one pack. Protocol-neutral.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "title",
+    "card",
+    "description",
+    "maintainers",
+    "compatibility"
+  ],
+  "properties": {
+    "id": {
+      "description": "<forge namespace>/<pack>, matching the repository path.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)+$"
+    },
+    "version": {
+      "description": "Semver; equals the release tag without the leading v.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "card": {
+      "description": "One line: when to use the pack (budgeted like an artifact card).",
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maintainers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "license": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requires": {
+      "description": "Connectors and capabilities the artifacts need. Never a grant.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dependencies": {
+      "description": "Other packs, resolved in quiver-pack.lock to a commit and sha256.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)+$"
+          },
+          "version": {
+            "description": "A semver range.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quiver"
+      ],
+      "properties": {
+        "quiver": {
+          "description": "The pack standard version range followed.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
