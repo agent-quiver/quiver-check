@@ -1,7 +1,7 @@
 # Written by scripts/sync_schemas.sh; do not edit.
 source: https://github.com/agent-quiver/pack-standard
-ref: 1f596ff
-commit: 1f596ff33f114850b11695781ea70e5d67abd986
+ref: ec61657
+commit: ec61657717215482edff4a9065f19fbd7221ded0
 sha256:
   pack.schema.json: b62039052734a6ffc41e6c335e2603779084b91b8fd0c0e4f21b890d3dbf728c
   manifest.schema.json: 8c83f14c059a9ca604c8e3aa32bda6abe39d079180eeadcd1480d96df07ce967
